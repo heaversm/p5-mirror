@@ -23,12 +23,11 @@ const scene = {
   dimensionColor: 255,
   dimensionIncrementY: 40, //the Y distance in pixels each set of dimension lines is apart from the last
   dimensionTextSize: 20,
-  dimensionAscenderY: 10 //how much each vertical dimension line rises or falls in pixels
+  dimensionAscenderY: 10, //how much each vertical dimension line rises or falls in pixels
 };
 
-let attachXStart, attachXEnd, attachY;
-let dimYIndex = 1;
-const dimensions = [];
+let dimYIndex = 1; //keeps track of the current set of dimensions to ensure they are spaced out evenly vertically
+const dimensions = []; //holds all of the data to draw dimensions
 
 function createGrid() {
   for (let i = 0; i < resolution * resolution; i++) {
@@ -89,51 +88,44 @@ function addObject() {
 
 function addObjectReflections() {
   let curReflection = 0;
-  //say mirrorDist = 15 and scene.objectUnitsFromRightMirror = 5;
+
   let rPrev = -(scene.mirrorDistance - scene.objectUnitsFromRightMirror);
   let lPrev = -scene.objectUnitsFromRightMirror;
 
   for (let i = 0; i < scene.numReflections; i++) {
-    const isRight = i % 2 === 0;
-    const graphics = isRight
-      ? scene.reflectionRightGraphics
-      : scene.reflectionLeftGraphics;
-    const reflectUnits = isRight ? rPrev : lPrev;
-    const totalUnits = reflectUnits + scene.mirrorDistance;
-    // TODO remove log
-    // console.log(
-    //   "totalUnits",
-    //   totalUnits,
-    //   "reflect units",
-    //   reflectUnits,
-    //   "i",
-    //   i,
-    //   "isRight",
-    //   isRight
-    // );
-    const mirrorX = isRight ? scene.mirror2X : scene.mirror1X;
-    let reflectX;
-    if (isRight) {
-      reflectX = mirrorX + totalUnits * gridSpace;
-    } else {
-      reflectX = mirrorX - totalUnits * gridSpace;
-    }
+    //loop through i sets of reflections
+    const totalUnitsRight = rPrev + scene.mirrorDistance;
+    const totalUnitsLeft = lPrev + scene.mirrorDistance;
+
+    //console.log(totalUnitsRight, totalUnitsLeft, rPrev, lPrev, i);
+
+    const reflectXRight = scene.mirror2X + totalUnitsRight * gridSpace;
+    const reflectXLeft = scene.mirror1X - totalUnitsLeft * gridSpace;
 
     imageMode(CENTER);
 
-    image(graphics, reflectX, canvasSize / 2);
-    if (isRight && i > 0) {
-      lPrev = totalUnits;
-    } else {
-      rPrev = totalUnits;
-    }
+    //right image
+    image(scene.reflectionRightGraphics, reflectXRight, canvasSize / 2);
+    //left image
+    image(scene.reflectionLeftGraphics, reflectXLeft, canvasSize / 2);
 
-    const dimYIncrementer = dimYIndex + Math.floor(i / 2);
+    rPrev = totalUnitsLeft;
+    lPrev = totalUnitsRight;
 
+    const dimYIncrementer = dimYIndex + i;
+
+    //right dimensions
     dimensions.push({
-      attachXStart: isRight ? scene.mirror2X : reflectX,
-      attachXEnd: isRight ? reflectX : scene.mirror1X,
-      attachY: attachY - scene.dimensionIncrementY * dimYIncrementer
+      attachXStart: scene.mirror2X,
+      attachXEnd: reflectXRight,
+      attachY: attachY - scene.dimensionIncrementY * dimYIncrementer,
+    });
+
+    //left dimensions
+    dimensions.push({
+      attachXStart: reflectXLeft,
+      attachXEnd: scene.mirror1X,
+      attachY: attachY - scene.dimensionIncrementY * dimYIncrementer,
     });
   }
   drawDimensions();
@@ -168,6 +160,7 @@ function createObjectGraphics(objectType = "objectGraphics") {
 }
 
 function addDimensions() {
+  //create the initial dimension data
   attachY = canvasSize / 2;
 
   const observerX =
@@ -177,12 +170,12 @@ function addDimensions() {
     {
       attachXStart: observerX,
       attachXEnd: scene.mirror2X,
-      attachY: attachY - scene.dimensionIncrementY * dimYIndex
+      attachY: attachY - scene.dimensionIncrementY * dimYIndex,
     },
     {
       attachXStart: scene.mirror1X,
       attachXEnd: observerX,
-      attachY: attachY - scene.dimensionIncrementY * dimYIndex
+      attachY: attachY - scene.dimensionIncrementY * dimYIndex,
     }
   );
 
@@ -191,11 +184,10 @@ function addDimensions() {
   dimensions.push({
     attachXStart: scene.mirror1X,
     attachXEnd: scene.mirror2X,
-    attachY: attachY - scene.dimensionIncrementY * dimYIndex
+    attachY: attachY - scene.dimensionIncrementY * dimYIndex,
   });
 
   dimYIndex++;
-  //drawDimensions();
 }
 
 function drawDimensions() {
