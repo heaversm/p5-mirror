@@ -39,9 +39,12 @@ let pivot; //holds the data to draw a pivoting line
 let needsUpdate = true;
 let pivotLength, pivotStartX, pivotEndX, pivotStartY, pivotEndY, finalX;
 let curPivotLength = 0;
-let pivotDrawStage = 0;
+let pivotDrawStage = -1;
+
+let curStartLineLength = 0;
 let curReflectLineLength = 0;
 let finalReflectLineLength = 0;
+
 let drawGrid = true;
 
 function createGrid() {
@@ -211,6 +214,19 @@ function addDimensions() {
     }
   );
 
+  dimensions.push(
+    {
+      attachXStart: scene.mirror2X,
+      attachXEnd: scene.mirror2X + scene.mirror2X - observerX,
+      attachY: attachY - scene.dimensionIncrementY,
+    }
+    // {
+    //   attachXStart: scene.mirror1X - (observerX - scene.mirror1X),
+    //   attachXEnd: scene.mirror1X,
+    //   attachY: attachY - scene.dimensionIncrementY,
+    // }
+  );
+
   dimensions.push({
     attachXStart: scene.mirror1X,
     attachXEnd: scene.mirror2X,
@@ -224,7 +240,23 @@ function drawPivot() {
   stroke(scene.pivotFill);
   strokeWeight(scene.pivotWeight);
   strokeCap(ROUND);
-  if (pivotDrawStage === 0) {
+  if (pivotDrawStage === -1) {
+    stroke(0);
+    strokeWeight(1);
+    const totalLineLength = scene.dimensionIncrementY * 3;
+    const curStartY = pivotEndY + totalLineLength;
+    line(
+      pivotEndX,
+      pivotEndY + scene.dimensionIncrementY * 3,
+      pivotEndX,
+      curStartY - curStartLineLength
+    );
+    if (curStartLineLength < totalLineLength) {
+      curStartLineLength += scene.animationIncrement;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 0) {
     line(pivotEndX, pivotEndY, pivotEndX - curPivotLength, pivotEndY);
     if (curPivotLength < pivotLength) {
       curPivotLength += scene.animationIncrement;
@@ -261,6 +293,30 @@ function drawPivot() {
       pivotDrawStage++;
     }
   } else if (pivotDrawStage === 4) {
+    //animate removal of reflect line and pivot line
+    line(pivotStartX, pivotStartY, pivotStartX - curPivotLength, pivotEndY);
+    stroke(0);
+    strokeWeight(1);
+    line(
+      pivotStartX - curPivotLength,
+      pivotStartY,
+      pivotStartX - curPivotLength,
+      pivotStartY + curReflectLineLength
+    );
+
+    if (curReflectLineLength > 0) {
+      curReflectLineLength -= scene.animationIncrement * 2;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 5) {
+    line(pivotStartX, pivotStartY, pivotStartX - curPivotLength, pivotEndY);
+    if (curPivotLength > 0) {
+      curPivotLength -= scene.animationIncrement;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 6) {
     stroke(scene.pivotFill);
     strokeWeight(scene.pivotWeight);
     line(
