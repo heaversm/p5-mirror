@@ -12,22 +12,37 @@ const scene = {
   mirror1: null, //reference to the mirror1 line
   mirror2: null, //reference to the mirror2 line
   observerSize: 40, //how big in X and Y pixels the object is
+  observerFill: [65, 121, 106],
   objectSize: 40, //how big in X and Y pixels the object is
   observerYUnitsFromObject: 20,
   objectUnitsFromRightMirror: 3,
   objectGraphics: null,
   reflectionRightGraphics: null,
+  reflectionRightFill: [218, 59, 95, 180],
   reflectionLeftGraphics: null,
-  numReflections: 4,
+  reflectionLeftFill: [248, 219, 96],
+  numReflections: 2,
   dimensionWeight: 2,
   dimensionColor: 255,
   dimensionIncrementY: 40, //the Y distance in pixels each set of dimension lines is apart from the last
   dimensionTextSize: 20,
   dimensionAscenderY: 10, //how much each vertical dimension line rises or falls in pixels
+  pivotFill: [65, 121, 106],
+  pivotWeight: 10,
+  animationIncrement: 10,
 };
 
 let dimYIndex = 1; //keeps track of the current set of dimensions to ensure they are spaced out evenly vertically
 const dimensions = []; //holds all of the data to draw dimensions
+
+let pivot; //holds the data to draw a pivoting line
+let needsUpdate = true;
+let pivotLength, pivotStartX, pivotEndX, pivotStartY, pivotEndY, finalX;
+let curPivotLength = 0;
+let pivotDrawStage = 0;
+let curReflectLineLength = 0;
+let finalReflectLineLength = 0;
+let drawGrid = true;
 
 function createGrid() {
   for (let i = 0; i < resolution * resolution; i++) {
@@ -68,7 +83,7 @@ function createObserver() {
     scene.observerSize / 2 - scene.observerSize / 4,
     scene.observerSize / 4
   );
-
+  imageMode(CORNER);
   image(
     observer,
     canvasSize / 2 - scene.observerSize / 2,
@@ -77,6 +92,7 @@ function createObserver() {
 }
 
 function addObject() {
+  imageMode(CORNER);
   image(
     scene.objectGraphics,
     scene.mirror2X -
@@ -87,10 +103,10 @@ function addObject() {
 }
 
 function addObjectReflections() {
-  let curReflection = 0;
-
   let rPrev = -(scene.mirrorDistance - scene.objectUnitsFromRightMirror);
   let lPrev = -scene.objectUnitsFromRightMirror;
+
+  let reflectRPrev, reflectLPrev;
 
   for (let i = 0; i < scene.numReflections; i++) {
     //loop through i sets of reflections
@@ -109,34 +125,50 @@ function addObjectReflections() {
     //left image
     image(scene.reflectionLeftGraphics, reflectXLeft, canvasSize / 2);
 
+    if (i === 0 && !dimensions.length) {
+      //right dimensions
+      dimensions.push({
+        attachXStart: scene.mirror2X,
+        attachXEnd: reflectXRight,
+        attachY: attachY - scene.dimensionIncrementY,
+      });
+
+      //left dimensions
+      dimensions.push({
+        attachXStart: reflectXLeft,
+        attachXEnd: scene.mirror1X,
+        attachY: attachY - scene.dimensionIncrementY,
+      });
+    } else if (i === 1 && !pivot) {
+      pivot = {
+        attachXStart: scene.mirror1X,
+        attachXEnd: reflectRPrev,
+        attachYStart: attachY - scene.dimensionIncrementY * 3,
+        attachYEnd: attachY - scene.dimensionIncrementY * 3,
+      };
+
+      pivotLength = pivot.attachXEnd - pivot.attachXStart;
+      pivotStartX = pivot.attachXStart;
+      pivotEndX = pivot.attachXEnd;
+      pivotStartY = pivot.attachYStart;
+      pivotEndY = pivot.attachYEnd;
+    }
+
     rPrev = totalUnitsLeft;
     lPrev = totalUnitsRight;
-
-    const dimYIncrementer = dimYIndex + i;
-
-    //right dimensions
-    dimensions.push({
-      attachXStart: scene.mirror2X,
-      attachXEnd: reflectXRight,
-      attachY: attachY - scene.dimensionIncrementY * dimYIncrementer,
-    });
-
-    //left dimensions
-    dimensions.push({
-      attachXStart: reflectXLeft,
-      attachXEnd: scene.mirror1X,
-      attachY: attachY - scene.dimensionIncrementY * dimYIncrementer,
-    });
+    reflectRPrev = reflectXRight;
+    reflectLPrev = reflectXLeft;
   }
+  finalX = reflectRPrev;
   drawDimensions();
 }
 
 function createObjectGraphics(objectType = "objectGraphics") {
   let objectFill = [218, 59, 95];
   if (objectType === "reflectionRightGraphics") {
-    objectFill = [218, 59, 95, 180];
+    objectFill = scene.reflectionRightFill;
   } else if (objectType === "reflectionLeftGraphics") {
-    objectFill = [248, 219, 96];
+    objectFill = scene.reflectionLeftFill;
   }
   const object = createGraphics(scene.objectSize, scene.objectSize);
   object.noStroke();
@@ -170,28 +202,100 @@ function addDimensions() {
     {
       attachXStart: observerX,
       attachXEnd: scene.mirror2X,
-      attachY: attachY - scene.dimensionIncrementY * dimYIndex,
+      attachY: attachY - scene.dimensionIncrementY,
     },
     {
       attachXStart: scene.mirror1X,
       attachXEnd: observerX,
-      attachY: attachY - scene.dimensionIncrementY * dimYIndex,
+      attachY: attachY - scene.dimensionIncrementY,
     }
   );
-
-  dimYIndex++;
 
   dimensions.push({
     attachXStart: scene.mirror1X,
     attachXEnd: scene.mirror2X,
-    attachY: attachY - scene.dimensionIncrementY * dimYIndex,
+    attachY: attachY - scene.dimensionIncrementY * 2,
   });
 
   dimYIndex++;
 }
 
+function drawPivot() {
+  stroke(scene.pivotFill);
+  strokeWeight(scene.pivotWeight);
+  strokeCap(ROUND);
+  if (pivotDrawStage === 0) {
+    line(pivotEndX, pivotEndY, pivotEndX - curPivotLength, pivotEndY);
+    if (curPivotLength < pivotLength) {
+      curPivotLength += scene.animationIncrement;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 1) {
+    line(pivotStartX, pivotStartY, pivotStartX + curPivotLength, pivotEndY);
+    if (curPivotLength > 0) {
+      curPivotLength -= scene.animationIncrement;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 2) {
+    line(pivotStartX, pivotStartY, pivotStartX - curPivotLength, pivotEndY);
+    if (-curPivotLength > -pivotLength) {
+      curPivotLength += scene.animationIncrement;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 3) {
+    line(pivotStartX, pivotStartY, pivotStartX - curPivotLength, pivotEndY);
+    stroke(0);
+    strokeWeight(1);
+    line(
+      pivotStartX - curPivotLength,
+      pivotStartY,
+      pivotStartX - curPivotLength,
+      pivotStartY + curReflectLineLength
+    );
+    if (curReflectLineLength < scene.dimensionIncrementY * 3) {
+      curReflectLineLength += scene.animationIncrement * 2;
+    } else {
+      pivotDrawStage++;
+    }
+  } else if (pivotDrawStage === 4) {
+    stroke(scene.pivotFill);
+    strokeWeight(scene.pivotWeight);
+    line(
+      scene.mirror2X,
+      pivotStartY,
+      scene.mirror2X + finalReflectLineLength,
+      pivotStartY
+    );
+    if (finalReflectLineLength < finalX - scene.mirror2X) {
+      finalReflectLineLength += scene.animationIncrement;
+    } else {
+      drawSolveText({
+        startX: scene.mirror2X,
+        y: pivotStartY,
+        endX: scene.mirror2X + finalReflectLineLength,
+      });
+      drawGrid = false;
+      //needsUpdate = false;
+    }
+  }
+}
+
+function drawSolveText(solveDims) {
+  textAlign(CENTER, BOTTOM);
+  fill(0);
+  stroke(255);
+  textSize(scene.dimensionTextSize);
+
+  let textX = solveDims.startX + (solveDims.endX - solveDims.startX) / 2;
+  let textY = solveDims.y - gridSpace * 2;
+
+  text("???", textX, textY);
+}
+
 function drawDimensions() {
-  stroke(121);
   strokeWeight(2);
 
   dimensions.forEach((dimension, i) => {
@@ -238,7 +342,16 @@ function drawDimensions() {
 
 function setup() {
   createCanvas(canvasSize, canvasSize);
-  createGrid();
+  angleMode(DEGREES);
+  drawBaseLayers();
+  drawPivot();
+}
+
+function drawBaseLayers() {
+  if (drawGrid) {
+    createGrid();
+  }
+
   createMirrors();
   createObserver();
   createObjectGraphics("objectGraphics");
@@ -249,4 +362,10 @@ function setup() {
   addObjectReflections();
 }
 
-function draw() {}
+function draw() {
+  if (needsUpdate) {
+    clear();
+    drawBaseLayers();
+    drawPivot();
+  }
+}
