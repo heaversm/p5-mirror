@@ -1,12 +1,15 @@
 /* eslint-disable no-undef, no-unused-vars */
 
-const canvasSize = 800; //how big in x and y pixels the canvas is
+const canvasWidth = 800; //how big in x and y pixels the canvas is
+const canvasHeight = 400;
 const gridSpace = 10; //how far apart in pixels each grid square is
-const resolution = canvasSize / gridSpace; //how many grid squares we want to draw
+const resolutionWidth = canvasWidth / gridSpace; //how many grid squares we want to draw
+const resolutionHeight = canvasHeight / gridSpace;
 
 const scene = {
   mirrorDistance: 8, //how far in units the mirrors are spaced
-  midpointX: canvasSize / 2, //center of the stage
+  midpointX: canvasWidth / 2, //center of the stage
+  midpointY: canvasHeight / 2,
   mirror1X: null, //x cordinate the left mirror runs through vertically
   mirror2X: null, //x cordinate the right mirror runs through vertically
   mirror1: null, //reference to the mirror1 line
@@ -14,7 +17,7 @@ const scene = {
   observerSize: 40, //how big in X and Y pixels the object is
   observerFill: [65, 121, 106],
   objectSize: 40, //how big in X and Y pixels the object is
-  observerYUnitsFromObject: 20,
+  observerYUnitsFromObject: 10,
   objectUnitsFromRightMirror: 3,
   objectGraphics: null,
   reflectionRightGraphics: null,
@@ -48,9 +51,9 @@ let finalReflectLineLength = 0;
 let drawGrid = true;
 
 function createGrid() {
-  for (let i = 0; i < resolution * resolution; i++) {
-    const row = Math.floor(i / resolution);
-    const col = i % resolution;
+  for (let i = 0; i < resolutionWidth * resolutionHeight; i++) {
+    const row = Math.floor(i / resolutionHeight);
+    const col = i % resolutionHeight;
     stroke(220);
     strokeWeight(1);
     fill(255);
@@ -59,13 +62,17 @@ function createGrid() {
 }
 
 function createMirrors() {
-  scene.midpointX = canvasSize / 2;
+  scene.midpointX = canvasWidth / 2;
   scene.mirror1X = scene.midpointX - (scene.mirrorDistance / 2) * gridSpace;
   scene.mirror2X = scene.midpointX + (scene.mirrorDistance / 2) * gridSpace;
   stroke(97, 157, 248);
   strokeWeight(2);
-  scene.mirror1 = line(scene.mirror1X, 0, scene.mirror1X, canvasSize);
-  scene.mirror2 = line(scene.mirror2X, 0, scene.mirror2X, canvasSize);
+  scene.mirror1 = line(scene.mirror1X, 0, scene.mirror1X, canvasHeight);
+  scene.mirror2 = line(scene.mirror2X, 0, scene.mirror2X, canvasHeight);
+  textAlign(CENTER, BOTTOM);
+  fill(0);
+  stroke(0);
+  text("M2", scene.mirror2X, canvasHeight - scene.dimensionIncrementY);
 }
 
 function createObserver() {
@@ -89,8 +96,8 @@ function createObserver() {
   imageMode(CORNER);
   image(
     observer,
-    canvasSize / 2 - scene.observerSize / 2,
-    canvasSize / 2 + scene.observerYUnitsFromObject * gridSpace
+    canvasWidth / 2 - scene.observerSize / 2,
+    canvasHeight / 2 + scene.observerYUnitsFromObject * gridSpace
   );
 }
 
@@ -101,7 +108,7 @@ function addObject() {
     scene.mirror2X -
       scene.objectSize / 2 -
       scene.objectUnitsFromRightMirror * gridSpace,
-    canvasSize / 2 - scene.objectSize / 2
+    canvasHeight / 2 - scene.objectSize / 2
   );
 }
 
@@ -124,9 +131,9 @@ function addObjectReflections() {
     imageMode(CENTER);
 
     //right image
-    image(scene.reflectionRightGraphics, reflectXRight, canvasSize / 2);
+    image(scene.reflectionRightGraphics, reflectXRight, canvasHeight / 2);
     //left image
-    image(scene.reflectionLeftGraphics, reflectXLeft, canvasSize / 2);
+    image(scene.reflectionLeftGraphics, reflectXLeft, canvasHeight / 2);
 
     if (i === 0 && !dimensions.length) {
       //right dimensions
@@ -163,6 +170,11 @@ function addObjectReflections() {
     reflectLPrev = reflectXLeft;
   }
   finalX = reflectRPrev;
+
+  textAlign(CENTER, BOTTOM);
+  fill(0);
+  stroke(0);
+  text("R2", finalX, canvasHeight - scene.dimensionIncrementY);
   drawDimensions();
 }
 
@@ -196,7 +208,7 @@ function createObjectGraphics(objectType = "objectGraphics") {
 
 function addDimensions() {
   //create the initial dimension data
-  attachY = canvasSize / 2;
+  attachY = canvasHeight / 2;
 
   const observerX =
     scene.mirror2X - scene.objectUnitsFromRightMirror * gridSpace;
@@ -397,7 +409,7 @@ function drawDimensions() {
 }
 
 function setup() {
-  createCanvas(canvasSize, canvasSize);
+  createCanvas(canvasWidth, canvasHeight);
   angleMode(DEGREES);
   drawBaseLayers();
   drawPivot();
